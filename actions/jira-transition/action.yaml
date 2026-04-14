@@ -1,0 +1,136 @@
+name: Jira Transition
+description: Move Jira issue to a specific status
+
+inputs:
+  transition_name:
+    description: "Target Jira status name (e.g. 'In Progress', 'Done', 'In Review')"
+    required: true
+  commit_message:
+    description: 'Commit message to extract Jira issue keys from (defaults to latest commit)'
+    required: false
+    default: ''
+  issue_key:
+    description: 'Jira issue key(s) — comma-separated for multiple (overrides commit message extraction)'
+    required: false
+    default: ''
+  jira_base_url:
+    description: 'Jira instance URL, e.g. https://yourcompany.atlassian.net'
+    required: true
+  jira_user_email:
+    description: 'Jira user email for authentication'
+    required: true
+  jira_api_token:
+    description: 'Jira API token'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve Jira issue keys
+      id: resolve
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [ -n "${{ inputs.issue_key }}" ]; then
+          ISSUE_KEYS=$(echo "${{ inputs.issue_key }}" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -E '^[A-Z]{1,10}-[0-9]+$' | sort -u || true)
+        else
+          if [ -n "${{ inputs.commit_message }}" ]; then
+            COMMIT_MSG="${{ inputs.commit_message }}"
+          else
+            COMMIT_MSG=$(git log -1 --pretty=%B "${{ github.sha }}")
+          fi
+
+          echo "Commit message: $COMMIT_MSG"
+
+          ISSUE_KEYS=$(echo "$COMMIT_MSG" | grep -oE '[A-Z]{1,10}-[0-9]+' | sort -u || true)
+        fi
+
+        if [ -z "$ISSUE_KEYS" ]; then
+          echo "::warning::No Jira issue key found. Skipping Jira transition (CI continues)."
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        echo "Found Jira issue(s):"
+        while IFS= read -r k; do
+          [ -z "$k" ] && continue
+          echo "  - $k"
+        done <<< "$ISSUE_KEYS"
+
+        echo "skip=false" >> "$GITHUB_OUTPUT"
+        {
+          echo 'issue_keys<<EOF'
+          echo "$ISSUE_KEYS"
+          echo 'EOF'
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Transition Jira issues to "${{ inputs.transition_name }}"
+      if: steps.resolve.outputs.skip == 'false'
+      shell: bash
+      env:
+        BASE_URL: ${{ inputs.jira_base_url }}
+        USER_EMAIL: ${{ inputs.jira_user_email }}
+        API_TOKEN: ${{ inputs.jira_api_token }}
+        TRANSITION_NAME: ${{ inputs.transition_name }}
+        ISSUE_KEYS_BLOCK: ${{ steps.resolve.outputs.issue_keys }}
+      run: |
+        set -euo pipefail
+
+        transition_one() {
+          local issue_key="$1"
+          local RESPONSE
+          RESPONSE=$(curl --silent --fail \
+            --url "$BASE_URL/rest/api/3/issue/$issue_key/transitions" \
+            --user "$USER_EMAIL:$API_TOKEN" \
+            --header "Accept: application/json")
+
+          echo "Transitions response for $issue_key: $RESPONSE"
+
+          local TRANSITION_ID
+          TRANSITION_ID=$(echo "$RESPONSE" | python3 -c "
+        import sys, json, os
+        data = json.load(sys.stdin)
+        target = os.environ['TRANSITION_NAME'].strip().lower()
+        for t in data.get('transitions', []):
+            if t['name'].strip().lower() == target:
+                print(t['id'])
+                sys.exit(0)
+        print('')
+        ")
+
+          if [ -z "$TRANSITION_ID" ]; then
+            echo "::error::Transition '$TRANSITION_NAME' not found for issue $issue_key."
+            echo "Available transitions:"
+            echo "$RESPONSE" | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        for t in data.get('transitions', []):
+            print(f\"  - {t['name']} (id: {t['id']})\")
+        "
+            exit 1
+          fi
+
+          echo "Transition ID for $issue_key: $TRANSITION_ID"
+
+          local HTTP_STATUS
+          HTTP_STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+            --request POST \
+            --url "$BASE_URL/rest/api/3/issue/$issue_key/transitions" \
+            --user "$USER_EMAIL:$API_TOKEN" \
+            --header "Accept: application/json" \
+            --header "Content-Type: application/json" \
+            --data "{\"transition\":{\"id\":\"$TRANSITION_ID\"}}")
+
+          if [ "$HTTP_STATUS" -eq 204 ]; then
+            echo "✅ Successfully moved $issue_key to '$TRANSITION_NAME'"
+          else
+            echo "::error::Failed to transition issue $issue_key. HTTP status: $HTTP_STATUS"
+            exit 1
+          fi
+        }
+
+        while IFS= read -r issue_key; do
+          [ -z "$issue_key" ] && continue
+          transition_one "$issue_key"
+        done <<< "$ISSUE_KEYS_BLOCK"

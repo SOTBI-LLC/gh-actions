@@ -1,0 +1,31 @@
+name: Code Quality
+
+on:
+  workflow_call:
+    inputs:
+      text:
+        type: string
+        description: Message text
+        default: 'Hello, world!'
+  workflow_dispatch:
+    inputs:
+      text:
+        description: Message text
+        required: true
+        default: 'Hello, world!'
+
+jobs:
+  send-tg:
+    name: Send telegram message
+    timeout-minutes: 3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Send telegram message
+        uses: ./.github/actions/notify-telegram
+        with:
+          chat_id: ${{ secrets.TELEGRAM_CHANNEL }}
+          bot_token: ${{ secrets.TELEGRAM_TOKEN }}
+          text: ${{ inputs.text }}

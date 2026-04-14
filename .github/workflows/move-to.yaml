@@ -1,0 +1,51 @@
+name: Move jira issue to ...
+
+on:
+  workflow_call:
+    inputs:
+      issue_key:
+        description: 'Jira issue key'
+        required: true
+        type: string
+      transition_name:
+        description: 'Jira transition name'
+        required: true
+        type: string
+        default: 'deployed to dev'
+
+  workflow_dispatch:
+    inputs:
+      issue_key:
+        description: 'Jira issue key'
+        required: true
+        type: string
+      transition_name:
+        description: 'Jira transition name'
+        required: true
+        default: 'In Progress'
+        type: choice
+        options:
+          - To Do
+          - Closed
+          - In Progress
+          - Needs investigation
+          - HOT to develop
+          - HOT to prod
+          - progress
+
+jobs:
+  move-jira-issue:
+    name: Move jira issue to ${{ inputs.transition_name }}
+    runs-on: sotbi-runners
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Move jira issue to ${{ inputs.transition_name }}
+        uses: ./.github/actions/jira-transition
+        with:
+          transition_name: ${{ inputs.transition_name }}
+          issue_key: ${{ inputs.issue_key }}
+          jira_base_url: ${{ secrets.JIRA_BASE_URL }}
+          jira_user_email: ${{ secrets.JIRA_USER_EMAIL }}
+          jira_api_token: ${{ secrets.JIRA_API_TOKEN }}

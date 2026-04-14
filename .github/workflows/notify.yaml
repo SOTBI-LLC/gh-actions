@@ -1,0 +1,29 @@
+name: notify
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      app:
+        required: true
+        type: string
+        default: counterparty
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send telegram message after building image
+        uses: ./.github/actions/notify-telegram
+        with:
+          chat_id: ${{ secrets.TELEGRAM_CHANNEL }}
+          bot_token: ${{ secrets.TELEGRAM_TOKEN }}
+          text: |
+            job_name: ${{ github.job }}
+            ${{ inputs.app }} service with tag: ${{ inputs.tag }}
+            🏃 Run by ${{ github.triggering_actor }}
+            🌴 Branch name: ${{ github.head_ref || github.ref_name }}
+            👀 See changes: https://github.com/${{ github.repository }}/commit/${{github.sha}}
+            View job logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

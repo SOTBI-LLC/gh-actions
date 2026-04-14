@@ -1,0 +1,99 @@
+name: Restart
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Image tag to deploy'
+        required: true
+        type: string
+      environment:
+        description: Environment to deploy to
+        required: true
+        type: string
+        default: dev
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag to deploy'
+        required: true
+        type: string
+        default: latest
+      environment:
+        description: Environment to deploy to
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+jobs:
+  restart:
+    runs-on: sotbi-runners
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+      - name: Set up kube config
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+        run: |
+          mkdir -p ~/.kube
+          echo "${KUBE_CONFIG_DATA}" | base64 --decode > ~/.kube/config
+          chmod go-r ~/.kube/config
+      - name: Run Helm Upgrade
+        run: |
+          helm lint ./helm
+          helm package ./helm
+          helm upgrade -i --reuse-values ${{ github.event.repository.name }} ./helm --set image.tag=${{ inputs.tag }} -n ${{ inputs.environment}}  -f ./helm/${{ inputs.environment}}.yaml
+
+  send-tg-failure:
+    name: Send telegram message if failure develop restart
+    needs:
+      - restart
+    if: failure()
+    uses: ./.github/workflows/send-tg.yaml
+    secrets: inherit
+    with:
+      text: |
+        ❗️Failed restart❗️ ${{ github.event.repository.name }} on 🛠${{ inputs.environment}}.
+        🌴: ${{ github.head_ref || github.ref_name }}
+        🔖: ${{ inputs.tag || github.sha }}
+        🕵: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  send-tg-success:
+    name: Send telegram message
+    needs:
+     - restart
+    uses: ./.github/workflows/send-tg.yaml
+    secrets: inherit
+    with:
+      text: |
+        🎉 ${{ github.actor }} restarted ${{ github.event.repository.name }} on ${{ inputs.environment}}.
+        🌴: ${{ github.head_ref || github.ref_name }}
+        🔖: ${{ inputs.tag || github.sha }}
+        🕵: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  move-jira:
+    name: Move jira issue to ${{ inputs.transition_name }}
+    runs-on: sotbi-runners
+    needs:
+      - restart
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: map environment to jira transition name (dev -> HOT to develop, prod -> HOT to prod)
+        id: map-environment-to-jira-transition-name
+        run: |
+          echo "transition_name=$(echo '${{ inputs.environment }}' | sed 's/dev/HOT to develop/g' | sed 's/prod/HOT to prod/g')" >> $GITHUB_OUTPUT
+
+      - name: Move jira issue to ${{ inputs.transition_name }}
+        uses: ./.github/actions/jira-transition
+        with:
+          issue_key: ${{ inputs.issue_key }}
+          transition_name: ${{ steps.map-environment-to-jira-transition-name.outputs.transition_name }}
+          jira_base_url: ${{ secrets.JIRA_BASE_URL }}
+          jira_user_email: ${{ secrets.JIRA_USER_EMAIL }}
+          jira_api_token: ${{ secrets.JIRA_API_TOKEN }}

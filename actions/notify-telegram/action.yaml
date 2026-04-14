@@ -1,0 +1,24 @@
+name: Notify Me Through Telegram
+description: Send a Telegram message about a workflow run
+
+inputs:
+  bot_token:
+    description: Telegram bot token
+    required: true
+  chat_id:
+    description: Telegram chat ID
+    required: true
+  text:
+    description: Message text (Markdown supported)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Send Telegram notification
+      shell: bash
+      run: |
+        curl -s -X POST "https://api.telegram.org/bot${{ inputs.bot_token }}/sendMessage" \
+          -d chat_id="${{ inputs.chat_id }}" \
+          -d parse_mode=Markdown \
+          -d text="${{ inputs.text }}"
