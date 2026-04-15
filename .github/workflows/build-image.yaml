@@ -30,13 +30,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Configure npm authentication
-        if: inputs.registry_url != ''
+        env:
+          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
         run: |
-          cat > ".npmrc" << EOF
-          @sotbi:registry=https://${{ inputs.REGISTRY_URL }}
-          //${{ inputs.REGISTRY_URL }}/:_authToken=${{ secrets.GITHUB_TOKEN }}
-          always-auth=true
-          EOF
+          if [ -z "${REGISTRY_URL}" ]; then
+            echo "Skipping npm authentication (REGISTRY_URL not set)"
+            exit 0
+          fi
+          {
+            echo "@sotbi:registry=https://${REGISTRY_URL}"
+            echo "//${REGISTRY_URL}/:_authToken=${GITHUB_TOKEN}"
+            echo "always-auth=true"
+          } > ".npmrc"
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
