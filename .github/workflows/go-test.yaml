@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: go mod download
       - name: Testing
-        run: go test --tags=tests -coverpkg=./internal/...  ./... -json > test-results.json
+        run: make test-ci
       - name: Upload Go test results
         if: failure()
         uses: actions/upload-artifact@v4
