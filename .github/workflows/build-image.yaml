@@ -11,13 +11,10 @@ on:
         required: true
       TELEGRAM_TOKEN:
         required: true
-      GITHUB_TOKEN:
-        required: true
 
 permissions:
   contents: read
   packages: write
-
 
 jobs:
   build-image:
