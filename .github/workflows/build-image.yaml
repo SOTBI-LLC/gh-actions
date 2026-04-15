@@ -13,6 +13,8 @@ on:
         required: true
       REGISTRY_URL:
         required: false
+      NPM_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -39,7 +41,7 @@ jobs:
           fi
           {
             echo "@sotbi:registry=https://${REGISTRY_URL}"
-            echo "//${REGISTRY_URL}/:_authToken=${GITHUB_TOKEN}"
+            echo "//${REGISTRY_URL}/:_authToken=${{ secrets.NPM_TOKEN }}"
             echo "always-auth=true"
           } > ".npmrc"
       - name: Docker meta
