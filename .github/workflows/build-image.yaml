@@ -30,11 +30,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Configure npm authentication
-        if: secrets.REGISTRY_URL != ''
+        if: inputs.registry_url != ''
         run: |
           cat > ".npmrc" << EOF
-          @sotbi:registry=https://${{ secrets.REGISTRY_URL }}
-          //${{ secrets.REGISTRY_URL }}/:_authToken=${{ secrets.GITHUB_TOKEN }}
+          @sotbi:registry=https://${{ inputs.REGISTRY_URL }}
+          //${{ inputs.REGISTRY_URL }}/:_authToken=${{ secrets.GITHUB_TOKEN }}
           always-auth=true
           EOF
       - name: Docker meta
