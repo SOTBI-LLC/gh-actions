@@ -1,5 +1,14 @@
 name: Move jira issue to ...
 
+# Available transitions:
+# - To Do
+# - Closed
+# - In Progress
+# - Needs investigation
+# - HOT to develop
+# - HOT to prod
+# - progress
+
 on:
   workflow_call:
     inputs:
