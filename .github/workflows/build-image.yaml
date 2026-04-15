@@ -12,6 +12,11 @@ on:
       TELEGRAM_TOKEN:
         required: true
 
+permissions:
+  contents: read
+  packages: write
+
+
 jobs:
   build-image:
     name: Building image

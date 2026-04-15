@@ -11,6 +11,10 @@ on:
         type: string
         default: HOT to develop
 
+permissions:
+  contents: read
+  issues: write
+  discussions: write
 
 jobs:
   move-jira-issue:
