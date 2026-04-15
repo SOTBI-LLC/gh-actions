@@ -1,29 +1,30 @@
 name: notify
+
 on:
-  workflow_dispatch:
   workflow_call:
     inputs:
-      tag:
-        required: true
+      text:
         type: string
-      app:
+        description: Message text
+        default: 'Hello, world!'
+    secrets:
+      TELEGRAM_CHANNEL:
         required: true
-        type: string
-        default: counterparty
+      TELEGRAM_TOKEN:
+        required: true
 
 jobs:
-  notify:
+  send-tg:
+    name: Send telegram message
+    timeout-minutes: 3
     runs-on: ubuntu-latest
     steps:
-      - name: Send telegram message after building image
-        uses: ./.github/actions/notify-telegram
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Send telegram message
+        uses: SOTBI-LLC/gh-actions/actions/notify-telegram@main
         with:
           chat_id: ${{ secrets.TELEGRAM_CHANNEL }}
           bot_token: ${{ secrets.TELEGRAM_TOKEN }}
-          text: |
-            job_name: ${{ github.job }}
-            ${{ inputs.app }} service with tag: ${{ inputs.tag }}
-            🏃 Run by ${{ github.triggering_actor }}
-            🌴 Branch name: ${{ github.head_ref || github.ref_name }}
-            👀 See changes: https://github.com/${{ github.repository }}/commit/${{github.sha}}
-            View job logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          text: ${{ inputs.text }}

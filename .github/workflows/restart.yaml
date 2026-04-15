@@ -8,23 +8,17 @@ on:
         type: string
       environment:
         description: Environment to deploy to
-        required: true
         type: string
         default: dev
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Image tag to deploy'
+    secrets:
+      KUBE_CONFIG_DATA:
         required: true
-        type: string
-        default: latest
-      environment:
-        description: Environment to deploy to
+      JIRA_BASE_URL:
         required: true
-        type: choice
-        options:
-          - dev
-          - prod
+      JIRA_USER_EMAIL:
+        required: true
+      JIRA_API_TOKEN:
+        required: true
 
 jobs:
   restart:
@@ -53,7 +47,7 @@ jobs:
     needs:
       - restart
     if: failure()
-    uses: ./.github/workflows/send-tg.yaml
+    uses: SOTBI-LLC/gh-actions/.github/workflows/notify.yaml@main
     secrets: inherit
     with:
       text: |
@@ -66,7 +60,7 @@ jobs:
     name: Send telegram message
     needs:
      - restart
-    uses: ./.github/workflows/send-tg.yaml
+    uses: SOTBI-LLC/gh-actions/.github/workflows/notify.yaml@main
     secrets: inherit
     with:
       text: |
@@ -76,7 +70,7 @@ jobs:
         🕵: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   move-jira:
-    name: Move jira issue to ${{ inputs.transition_name }}
+    name: Move jira issue
     runs-on: sotbi-runners
     needs:
       - restart
@@ -84,15 +78,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: map environment to jira transition name (dev -> HOT to develop, prod -> HOT to prod)
+      - name: map transition name (dev -> HOT to develop, prod -> HOT to prod)
         id: map-environment-to-jira-transition-name
         run: |
           echo "transition_name=$(echo '${{ inputs.environment }}' | sed 's/dev/HOT to develop/g' | sed 's/prod/HOT to prod/g')" >> $GITHUB_OUTPUT
 
-      - name: Move jira issue to ${{ inputs.transition_name }}
-        uses: ./.github/actions/jira-transition
+      - name: Move to ${{ steps.map-environment-to-jira-transition-name.outputs.transition_name }}
+        uses: SOTBI-LLC/gh-actions/actions/jira-transition@main
         with:
-          issue_key: ${{ inputs.issue_key }}
           transition_name: ${{ steps.map-environment-to-jira-transition-name.outputs.transition_name }}
           jira_base_url: ${{ secrets.JIRA_BASE_URL }}
           jira_user_email: ${{ secrets.JIRA_USER_EMAIL }}

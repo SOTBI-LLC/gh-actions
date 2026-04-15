@@ -5,33 +5,12 @@ on:
     inputs:
       issue_key:
         description: 'Jira issue key'
-        required: true
         type: string
       transition_name:
         description: 'Jira transition name'
-        required: true
         type: string
-        default: 'deployed to dev'
+        default: HOT to develop
 
-  workflow_dispatch:
-    inputs:
-      issue_key:
-        description: 'Jira issue key'
-        required: true
-        type: string
-      transition_name:
-        description: 'Jira transition name'
-        required: true
-        default: 'In Progress'
-        type: choice
-        options:
-          - To Do
-          - Closed
-          - In Progress
-          - Needs investigation
-          - HOT to develop
-          - HOT to prod
-          - progress
 
 jobs:
   move-jira-issue:
@@ -42,7 +21,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Move jira issue to ${{ inputs.transition_name }}
-        uses: ./.github/actions/jira-transition
+        uses: SOTBI-LLC/gh-actions/actions/jira-transition@main
         with:
           transition_name: ${{ inputs.transition_name }}
           issue_key: ${{ inputs.issue_key }}

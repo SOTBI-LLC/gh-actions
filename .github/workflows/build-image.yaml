@@ -6,10 +6,11 @@ on:
         description: 'Tag to deploy'
         required: true
         type: string
-  workflow_dispatch:
-
-env:
-  branch: ${{ github.head_ref || github.ref_name }}
+    secrets:
+      TELEGRAM_CHANNEL:
+        required: true
+      TELEGRAM_TOKEN:
+        required: true
 
 jobs:
   build-image:
@@ -62,16 +63,16 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
       - name: Send telegram message on fail image was built
         if: failure()
-        uses: ./.github/actions/notify-telegram
+        uses: SOTBI-LLC/gh-actions/actions/notify-telegram@main
         with:
           chat_id: ${{ secrets.TELEGRAM_CHANNEL }}
           bot_token: ${{ secrets.TELEGRAM_TOKEN }}
           text: |
             ⛔ Failure building image started by ${{ github.actor }}.
-            Used 🌴: ${{ env.branch }}
-            Used tag: ${{ steps.meta.outputs.tags }}
+            🌴: ${{ github.head_ref || github.ref_name }}
+            🔖: ${{ steps.meta.outputs.tags }}
             👀 changes: https://github.com/${{ github.repository }}/commit/${{github.sha}}
-            View job logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            📋: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Get and trim commit message
         id: commit_message
         shell: bash
@@ -92,15 +93,15 @@ jobs:
             echo "$DELIM"
           } >> "$GITHUB_OUTPUT"
       - name: Send telegram message after image was built
-        uses: ./.github/actions/notify-telegram
+        uses: SOTBI-LLC/gh-actions/actions/notify-telegram@main
         with:
           chat_id: ${{ secrets.TELEGRAM_CHANNEL }}
           bot_token: ${{ secrets.TELEGRAM_TOKEN }}
           text: |
-            ${{ github.actor }} built image.
-            ${{ steps.commit_message.outputs.trimmed_message }}
-            Used branch: ${{ env.branch }}
-            Used tag: ${{ steps.meta.outputs.tags }}
-            Used labels: ${{ steps.meta.outputs.labels }}
+            🏗️: ${{ github.actor }} built image.
+            💬: ${{ steps.commit_message.outputs.trimmed_message }}
+            🌴: ${{ env.branch }}
+            🔖: ${{ steps.meta.outputs.tags }}
+            🏷️: ${{ steps.meta.outputs.labels }}
             👀 changes: https://github.com/${{ github.repository }}/commit/${{github.sha}}
-            View job logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            📋: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
