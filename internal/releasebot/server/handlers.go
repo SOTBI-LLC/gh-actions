@@ -48,6 +48,22 @@ func (s *Server) handleBuildNotification(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	s.logger.Info(
+		"created release notification",
+		"release_id",
+		releaseID,
+		"repository",
+		notification.Repository,
+		"ref",
+		notification.Ref,
+		"branch",
+		notification.Branch,
+		"tag",
+		notification.Tag,
+		"actor",
+		notification.Actor,
+	)
+
 	ctx, cancel := context.WithTimeout(r.Context(), defaultCallbackTimeout)
 	defer cancel()
 

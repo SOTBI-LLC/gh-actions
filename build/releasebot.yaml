@@ -1,0 +1,164 @@
+# Apply the Secret out-of-band with real values before creating the Deployment:
+#
+#   kubectl create secret generic releasebot-secret -n prod \
+#     --from-literal=TELEGRAM_BOT_TOKEN='REPLACE_ME' \
+#     --from-literal=TELEGRAM_CHAT_ID='REPLACE_ME' \
+#     --from-literal=TELEGRAM_ALLOWED_USER_IDS='123456789,987654321' \
+#     --from-literal=GITHUB_TOKEN='REPLACE_ME' \
+#     --from-literal=RELEASEBOT_SHARED_SECRET='REPLACE_ME' \
+#     --from-literal=TELEGRAM_WEBHOOK_SECRET_TOKEN='REPLACE_ME'
+#
+# Then add RELEASEBOT_URL=https://releasebot.example.com and
+# RELEASEBOT_SHARED_SECRET to the service repositories that call the bot.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: releasebot
+  labels:
+    app: releasebot
+    component: backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: releasebot
+  labels:
+    app: releasebot
+    component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: releasebot
+  template:
+    metadata:
+      labels:
+        app: releasebot
+        component: backend
+    spec:
+      serviceAccountName: releasebot
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: releasebot
+          image: ghcr.io/sotbi-llc/gh-actions:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: RELEASEBOT_HTTP_ADDR
+              value: ":8080"
+            - name: RELEASEBOT_LONG_POLLING
+              value: "true"
+            - name: RELEASEBOT_WORKFLOW_FILE
+              value: restart.yaml
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: releasebot-secret
+                  key: TELEGRAM_BOT_TOKEN
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: releasebot-secret
+                  key: TELEGRAM_CHAT_ID
+            - name: TELEGRAM_ALLOWED_USER_IDS
+              valueFrom:
+                secretKeyRef:
+                  name: releasebot-secret
+                  key: TELEGRAM_ALLOWED_USER_IDS
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: releasebot-secret
+                  key: GITHUB_TOKEN
+            - name: RELEASEBOT_SHARED_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: releasebot-secret
+                  key: RELEASEBOT_SHARED_SECRET
+            - name: TELEGRAM_WEBHOOK_SECRET_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: releasebot-secret
+                  key: TELEGRAM_WEBHOOK_SECRET_TOKEN
+                  optional: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: releasebot
+  labels:
+    app: releasebot
+    component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: releasebot
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: releasebot
+  labels:
+    app: releasebot
+    component: backend
+  annotations:
+    cert-manager.io/cluster-issuer: example-issuer
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - releasebot.example.com
+      secretName: releasebot-crt
+  rules:
+    - host: releasebot.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: releasebot
+                port:
+                  name: http

@@ -1,0 +1,10 @@
+services:
+  releasebot:
+    image: ghcr.io/sotbi-llc/gh-actions
+    env_file:
+      - ${PWD}/.env
+    ports:
+      - "8080:8080"
+    networks:
+      - default
+    restart: always

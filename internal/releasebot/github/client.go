@@ -35,7 +35,10 @@ func (c *Client) DispatchWorkflow(
 ) error {
 	repo := strings.Trim(notification.Repository, "/")
 	if !strings.Contains(repo, "/") {
-		return fmt.Errorf("repository must be owner/name: %s", notification.Repository)
+		return fmt.Errorf(
+			"repository must be owner/name: %s",
+			notification.Repository,
+		)
 	}
 
 	payload := map[string]any{

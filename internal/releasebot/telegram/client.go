@@ -4,18 +4,27 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
+
+const maxTelegramResponseBodyBytes = 64 * 1024
+
+type Doer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
 
 type Client struct {
 	baseURL string
 	token   string
-	http    *http.Client
+	http    Doer
 }
 
-func NewClient(baseURL, token string, httpClient *http.Client) *Client {
+func NewClient(baseURL, token string, httpClient Doer) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		token:   token,
@@ -103,22 +112,34 @@ func (c *Client) do(ctx context.Context, method string, payload, result any) err
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return err
+		return telegramRequestError(method, err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, maxTelegramResponseBodyBytes))
+	if err != nil {
+		return fmt.Errorf("telegram %s read response: %w", method, err)
+	}
+
 	var apiResponse APIResponse[json.RawMessage]
-	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
-		return err
+	if err := json.Unmarshal(responseBody, &apiResponse); err != nil {
+		return fmt.Errorf(
+			"telegram %s decode response: status=%d body=%s: %w",
+			method,
+			resp.StatusCode,
+			strings.TrimSpace(string(responseBody)),
+			err,
+		)
 	}
 
 	if resp.StatusCode < http.StatusOK ||
 		resp.StatusCode >= http.StatusMultipleChoices ||
 		!apiResponse.OK {
 		return fmt.Errorf(
-			"telegram %s failed: status=%d description=%s",
+			"telegram %s failed: status=%d error_code=%d description=%s",
 			method,
 			resp.StatusCode,
+			apiResponse.ErrorCode,
 			apiResponse.Description,
 		)
 	}
@@ -128,8 +149,26 @@ func (c *Client) do(ctx context.Context, method string, payload, result any) err
 	}
 
 	if err := json.Unmarshal(apiResponse.Result, result); err != nil {
-		return err
+		return fmt.Errorf("telegram %s decode result: %w", method, err)
 	}
 
 	return nil
+}
+
+func telegramRequestError(method string, err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		if urlErr.Err != nil {
+			return fmt.Errorf(
+				"telegram %s request failed: op=%s error=%v",
+				method,
+				urlErr.Op,
+				urlErr.Err,
+			)
+		}
+
+		return fmt.Errorf("telegram %s request failed: op=%s", method, urlErr.Op)
+	}
+
+	return fmt.Errorf("telegram %s request failed: %v", method, err)
 }

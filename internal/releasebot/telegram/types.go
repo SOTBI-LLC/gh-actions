@@ -25,6 +25,7 @@ type Message struct {
 
 type APIResponse[T any] struct {
 	OK          bool   `json:"ok"`
+	ErrorCode   int    `json:"error_code"`
 	Description string `json:"description"`
 	Result      T      `json:"result"`
 }

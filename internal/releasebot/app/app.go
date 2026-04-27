@@ -14,7 +14,10 @@ import (
 	"github.com/SOTBI-LLC/gh-actions/internal/releasebot/server"
 )
 
-const defaultHTTPTimeout = 15 * time.Second
+const (
+	defaultHTTPRequestTimeout = 45 * time.Second
+	defaultShutdownTimeout    = 15 * time.Second
+)
 
 func Run() error {
 	config, err := config.LoadConfig()
@@ -29,7 +32,10 @@ func Run() error {
 }
 
 func run(ctx context.Context, config config.Params, logger *slog.Logger) error {
-	httpClient := &http.Client{Timeout: defaultHTTPTimeout}
+	tr := &http.Transport{
+		ForceAttemptHTTP2: true,
+	}
+	httpClient := &http.Client{Timeout: defaultHTTPRequestTimeout, Transport: tr}
 	bot := server.New(config, logger, httpClient)
 	mux := http.NewServeMux()
 	bot.RegisterRoutes(mux)
@@ -39,6 +45,22 @@ func run(ctx context.Context, config config.Params, logger *slog.Logger) error {
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+
+	logger.Info(
+		"starting release bot",
+		"http_addr",
+		config.HTTPAddr,
+		"long_polling",
+		config.EnableLongPolling,
+		"telegram_api_base_url",
+		config.TelegramAPIBaseURL,
+		"github_api_base_url",
+		config.GitHubAPIBaseURL,
+		"workflow_file",
+		config.WorkflowFile,
+		"http_request_timeout",
+		defaultHTTPRequestTimeout,
+	)
 
 	errCh := make(chan error, 2)
 
@@ -57,12 +79,12 @@ func run(ctx context.Context, config config.Params, logger *slog.Logger) error {
 
 	select {
 	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
 		defer cancel()
 
 		return httpServer.Shutdown(shutdownCtx)
 	case err := <-errCh:
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
 		defer cancel()
 
 		shutdownErr := httpServer.Shutdown(shutdownCtx)

@@ -10,22 +10,61 @@ import (
 	"github.com/SOTBI-LLC/gh-actions/internal/releasebot/telegram"
 )
 
-const defaultPollTimeout = 30
+const (
+	defaultPollTimeout = 30
+	pollRetryDelay     = time.Second
+)
 
 func (s *Server) PollTelegramUpdates(ctx context.Context) error {
 	var offset int64
 
+	s.logger.Info("started telegram long polling", "timeout_seconds", defaultPollTimeout)
+
 	for {
+		startedAt := time.Now()
 		updates, err := s.telegram.GetUpdates(ctx, offset, defaultPollTimeout)
+		duration := time.Since(startedAt)
+
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
 			}
 
-			s.logger.Warn("failed to poll telegram updates", "error", err)
-			time.Sleep(time.Second)
+			s.logger.Warn(
+				"failed to poll telegram updates",
+				"offset",
+				offset,
+				"timeout_seconds",
+				defaultPollTimeout,
+				"duration",
+				duration,
+				"retry_delay",
+				pollRetryDelay,
+				"error",
+				err,
+			)
+
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(pollRetryDelay):
+			}
 
 			continue
+		}
+
+		if len(updates) > 0 {
+			s.logger.Info(
+				"received telegram updates",
+				"count",
+				len(updates),
+				"first_update_id",
+				updates[0].UpdateID,
+				"last_update_id",
+				updates[len(updates)-1].UpdateID,
+				"duration",
+				duration,
+			)
 		}
 
 		for _, update := range updates {
@@ -36,6 +75,10 @@ func (s *Server) PollTelegramUpdates(ctx context.Context) error {
 					"failed to handle telegram update",
 					"update_id",
 					update.UpdateID,
+					"user_id",
+					updateUserID(update),
+					"callback_data",
+					updateCallbackData(update),
 					"error",
 					err,
 				)
@@ -116,6 +159,22 @@ func (s *Server) handleDeployCallback(
 		return s.telegram.AnswerCallback(ctx, callback.ID, "Release context has expired", true)
 	}
 
+	s.logger.Info(
+		"dispatching release workflow",
+		"release_id",
+		releaseID,
+		"repository",
+		notification.Repository,
+		"ref",
+		notification.Ref,
+		"tag",
+		notification.Tag,
+		"environment",
+		environment,
+		"user_id",
+		callback.From.ID,
+	)
+
 	if err := s.github.DispatchWorkflow(ctx, notification, environment); err != nil {
 		_ = s.telegram.AnswerCallback(ctx, callback.ID, "Failed to start deploy", true)
 
@@ -131,5 +190,35 @@ func (s *Server) handleDeployCallback(
 		)
 	}
 
+	s.logger.Info(
+		"release workflow dispatched",
+		"release_id",
+		releaseID,
+		"repository",
+		notification.Repository,
+		"ref",
+		notification.Ref,
+		"tag",
+		notification.Tag,
+		"environment",
+		environment,
+	)
+
 	return s.telegram.AnswerCallback(ctx, callback.ID, "Deploy started for "+environment, false)
+}
+
+func updateUserID(update telegram.Update) int64 {
+	if update.CallbackQuery == nil {
+		return 0
+	}
+
+	return update.CallbackQuery.From.ID
+}
+
+func updateCallbackData(update telegram.Update) string {
+	if update.CallbackQuery == nil {
+		return ""
+	}
+
+	return update.CallbackQuery.Data
 }
