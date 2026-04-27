@@ -36,16 +36,30 @@ func EnvironmentKeyboard(releaseID string) InlineKeyboardMarkup {
 	}
 }
 
-func DeployedKeyboard(environment string) InlineKeyboardMarkup {
+// PostDeployEnvironmentKeyboard keeps dev/prod available so the other environment
+// can be deployed after the first dispatch. Completed environments use a no-op button.
+func PostDeployEnvironmentKeyboard(releaseID string, devDone, prodDone bool) InlineKeyboardMarkup {
 	return InlineKeyboardMarkup{
 		InlineKeyboard: [][]InlineKeyboardButton{
 			{
-				{
-					Text:         "deploy started: " + environment,
-					CallbackData: "noop",
-				},
+				environmentButton(releaseID, domain.EnvironmentDev, devDone),
+				environmentButton(releaseID, domain.EnvironmentProd, prodDone),
 			},
 		},
+	}
+}
+
+func environmentButton(releaseID, environment string, done bool) InlineKeyboardButton {
+	if done {
+		return InlineKeyboardButton{
+			Text:         "✓ " + environment,
+			CallbackData: domain.ActionNoop,
+		}
+	}
+
+	return InlineKeyboardButton{
+		Text:         environment,
+		CallbackData: domain.ActionDeploy + ":" + releaseID + ":" + environment,
 	}
 }
 

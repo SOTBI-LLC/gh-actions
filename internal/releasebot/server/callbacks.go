@@ -93,6 +93,10 @@ func (s *Server) HandleTelegramUpdate(ctx context.Context, update telegram.Updat
 	}
 
 	callback := update.CallbackQuery
+	if callback.Data == domain.ActionNoop {
+		return s.telegram.AnswerCallback(ctx, callback.ID, "", false)
+	}
+
 	if !s.isAllowedUser(callback.From.ID) {
 		return errors.Join(
 			domain.ErrUnauthorized,
@@ -181,12 +185,15 @@ func (s *Server) handleDeployCallback(
 		return err
 	}
 
+	_ = s.releases.MarkDeployed(releaseID, environment)
+	devDone, prodDone, _ := s.releases.DeploymentStatus(releaseID)
+
 	if callback.Message != nil {
 		_ = s.telegram.EditMessageReplyMarkup(
 			ctx,
 			callback.Message.Chat.ID,
 			callback.Message.MessageID,
-			telegram.DeployedKeyboard(environment),
+			telegram.PostDeployEnvironmentKeyboard(releaseID, devDone, prodDone),
 		)
 	}
 

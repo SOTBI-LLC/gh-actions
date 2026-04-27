@@ -9,6 +9,7 @@ import (
 const (
 	ActionRelease   = "release"
 	ActionDeploy    = "deploy"
+	ActionNoop      = "noop"
 	EnvironmentDev  = "dev"
 	EnvironmentProd = "prod"
 )

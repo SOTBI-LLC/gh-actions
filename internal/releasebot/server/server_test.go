@@ -216,18 +216,73 @@ func TestBuildNotificationAndWebhookDispatch(t *testing.T) {
 		calls[3],
 		"reply_markup",
 	)
-	if len(deployedMarkup.InlineKeyboard) != 1 || len(deployedMarkup.InlineKeyboard[0]) != 1 {
-		t.Fatalf("unexpected deployed keyboard: %+v", deployedMarkup)
-	}
-
-	if deployedMarkup.InlineKeyboard[0][0].Text != "deploy started: "+domain.EnvironmentDev {
-		t.Fatalf("unexpected deployed keyboard text: %+v", deployedMarkup)
-	}
+	assertPostDeployEnvironmentKeyboard(
+		t,
+		deployedMarkup,
+		releaseID,
+		true,
+		false,
+	)
 
 	callbackText = decodeTelegramPayloadValue[string](t, calls[4], "text")
 	if callbackText != "Deploy started for "+domain.EnvironmentDev {
 		t.Fatalf("unexpected deploy callback answer: %s", callbackText)
 	}
+
+	deployProdUpdate := telegram.Update{
+		CallbackQuery: &telegram.CallbackQuery{
+			ID:   "deploy-prod-callback",
+			From: telegram.User{ID: 42},
+			Message: &telegram.Message{
+				MessageID: 10,
+				Chat: struct {
+					ID int64 `json:"id"`
+				}{ID: 100},
+			},
+			Data: domain.ActionDeploy + ":" + releaseID + ":" + domain.EnvironmentProd,
+		},
+	}
+
+	response = performJSONRequest(
+		t,
+		mux,
+		http.MethodPost,
+		"/telegram/webhook",
+		deployProdUpdate,
+		map[string]string{
+			"X-Telegram-Bot-Api-Secret-Token": "webhook-secret",
+		},
+	)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf(
+			"unexpected second deploy webhook status: %d body=%s",
+			response.Code,
+			response.Body.String(),
+		)
+	}
+
+	if dispatched.Inputs["environment"] != domain.EnvironmentProd {
+		t.Fatalf("unexpected second dispatch: %+v", dispatched)
+	}
+
+	calls = telegramCallsSnapshot(&telegramMu, telegramCalls)
+	if len(calls) != 7 || calls[5].Method != "editMessageReplyMarkup" ||
+		calls[6].Method != "answerCallbackQuery" {
+		t.Fatalf("unexpected telegram calls after second deploy: %+v", calls)
+	}
+
+	bothDoneMarkup := decodeTelegramPayloadValue[telegram.InlineKeyboardMarkup](
+		t,
+		calls[5],
+		"reply_markup",
+	)
+	assertPostDeployEnvironmentKeyboard(
+		t,
+		bothDoneMarkup,
+		releaseID,
+		true,
+		true,
+	)
 }
 
 func TestWebhookRejectsUnauthorizedUser(t *testing.T) {
@@ -472,6 +527,48 @@ func assertEnvironmentKeyboard(
 				index,
 				markup.InlineKeyboard[0][index],
 			)
+		}
+	}
+}
+
+func assertPostDeployEnvironmentKeyboard(
+	t *testing.T,
+	markup telegram.InlineKeyboardMarkup,
+	releaseID string,
+	wantDevDone, wantProdDone bool,
+) {
+	t.Helper()
+
+	if len(markup.InlineKeyboard) != 1 || len(markup.InlineKeyboard[0]) != 2 {
+		t.Fatalf("unexpected post-deploy keyboard: %+v", markup)
+	}
+
+	dev := markup.InlineKeyboard[0][0]
+	prod := markup.InlineKeyboard[0][1]
+
+	if wantDevDone {
+		if dev.Text != "✓ "+domain.EnvironmentDev || dev.CallbackData != domain.ActionNoop {
+			t.Fatalf("unexpected dev button after deploy: %+v", dev)
+		}
+	} else {
+		if dev != (telegram.InlineKeyboardButton{
+			Text:         domain.EnvironmentDev,
+			CallbackData: domain.ActionDeploy + ":" + releaseID + ":" + domain.EnvironmentDev,
+		}) {
+			t.Fatalf("unexpected dev button: %+v", dev)
+		}
+	}
+
+	if wantProdDone {
+		if prod.Text != "✓ "+domain.EnvironmentProd || prod.CallbackData != domain.ActionNoop {
+			t.Fatalf("unexpected prod button after deploy: %+v", prod)
+		}
+	} else {
+		if prod != (telegram.InlineKeyboardButton{
+			Text:         domain.EnvironmentProd,
+			CallbackData: domain.ActionDeploy + ":" + releaseID + ":" + domain.EnvironmentProd,
+		}) {
+			t.Fatalf("unexpected prod button: %+v", prod)
 		}
 	}
 }
