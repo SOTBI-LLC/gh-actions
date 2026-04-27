@@ -202,7 +202,7 @@ Telegram будет отправлять callbacks на `/telegram/webhook`, а 
 
 ## 6. Подключить сервисные репозитории
 
-Для каждого сервиса, который использует reusable [`/Users/bazys/Projects/sotbi/gh-actions/.github/workflows/build-image.yaml`](file:///Users/bazys/Projects/sotbi/gh-actions/.github/workflows/build-image.yaml):
+Для каждого сервиса, который использует reusable `build-image.yaml`:
 
 1. Добавить secrets `RELEASEBOT_URL` и `RELEASEBOT_SHARED_SECRET`.
 2. Оставить существующие `TELEGRAM_CHANNEL` и `TELEGRAM_TOKEN`, потому что они используются для failure-уведомлений и fallback при недоступном release bot.
