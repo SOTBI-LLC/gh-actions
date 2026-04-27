@@ -1,0 +1,119 @@
+version: "2"
+run:
+  tests: false
+  concurrency: 4
+  go: '1.26'
+
+linters:
+  enable:
+    - bodyclose
+    - containedctx
+    - errname
+    - gosec
+    - unconvert
+    - goconst
+    - misspell
+    - unparam
+    - prealloc
+    - copyloopvar
+    - gochecknoinits
+    - gocritic
+    - dupl
+    - gocyclo
+    - lll
+    - noctx
+    - nolintlint
+    - godot
+    - whitespace
+    - nlreturn
+    - wsl_v5
+    - modernize
+  settings:
+    gosec:
+      excludes:
+        - G115
+        - G602
+    godot:
+      exclude:
+        - "^fixme:"
+        - "^todo:"
+    errcheck:
+      check-type-assertions: true
+    govet:
+      disable:
+        - printf
+    gocyclo:
+      min-complexity: 25
+  #  maligned:
+  #    # print struct with more effective memory layout or not, false by default
+  #    suggest-new: true
+    # misspell:
+    #   locale: US
+    # unparam:
+    #   check-exported: true
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+      disable:
+        - assign
+    whitespace:
+      multi-if: false
+    gocritic:
+      settings:
+        hugeParam:
+          sizeThreshold: 255
+      enabled-checks:
+        - sprintfQuotedString
+        - badLock
+        - badSorting
+        - badSyncOnceFunc
+        - boolExprSimplify
+        - deferInLoop
+        - rangeValCopy
+        - unnamedResult
+        - truncateCmp
+        - appendCombine
+        - equalFold
+        - hugeParam
+        - indexAlloc
+        - preferDecodeRune
+        - preferFprint
+        - preferStringWriter
+        - rangeExprCopy
+        - ptrToRefParam
+        - paramTypeCombine
+        - nestingReduce
+        - httpNoBody
+        - evalOrder
+        - sliceClear
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - errcheck
+          - dupl
+          - gosec
+          - scopelint
+      - path: model/.*\.go
+        linters:
+          - lll
+      - path: entity/.*\.go
+        linters:
+          - lll
+    paths:
+      - "mocks\\.go$"
+      - assets
+      - build
+      - test
+
+formatters:
+  settings:
+    gofumpt:
+      extra-rules: true
+    golines:
+      shorten-comments: true
+
+issues:
+  fix: true

@@ -1,0 +1,7 @@
+.githooks
+.git
+.idea
+.vscode
+**/*_test.go
+**/mocks.go
+**/*.pb.go

@@ -15,6 +15,10 @@ on:
         required: false
       NPM_TOKEN:
         required: false
+      RELEASEBOT_URL:
+        required: false
+      RELEASEBOT_SHARED_SECRET:
+        required: false
 
 permissions:
   contents: read
@@ -113,7 +117,60 @@ jobs:
             echo "$TRIMMED_MSG"
             echo "$DELIM"
           } >> "$GITHUB_OUTPUT"
+      - name: Check release bot configuration
+        id: releasebot_config
+        shell: bash
+        env:
+          RELEASEBOT_URL: ${{ secrets.RELEASEBOT_URL }}
+          RELEASEBOT_SHARED_SECRET: ${{ secrets.RELEASEBOT_SHARED_SECRET }}
+        run: |
+          if [ -n "${RELEASEBOT_URL}" ] && [ -n "${RELEASEBOT_SHARED_SECRET}" ]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+          fi
+      - name: Send build notification to release bot
+        id: releasebot
+        if: ${{ success() && steps.releasebot_config.outputs.enabled == 'true' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          RELEASEBOT_URL: ${{ secrets.RELEASEBOT_URL }}
+          RELEASEBOT_SHARED_SECRET: ${{ secrets.RELEASEBOT_SHARED_SECRET }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          TAG: ${{ inputs.tag }}
+          COMMIT_MESSAGE: ${{ steps.commit_message.outputs.trimmed_message }}
+        run: |
+          set -euo pipefail
+
+          endpoint="${RELEASEBOT_URL%/}/build-notifications"
+          payload_file="$(mktemp)"
+
+          python3 - <<'PY' > "${payload_file}"
+          import json
+          import os
+
+          payload = {
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "ref": os.environ["GITHUB_REF"],
+              "branch": os.environ["BRANCH"],
+              "sha": os.environ["GITHUB_SHA"],
+              "tag": os.environ["TAG"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "commit_message": os.environ["COMMIT_MESSAGE"],
+              "run_url": f'{os.environ["GITHUB_SERVER_URL"]}/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{os.environ["GITHUB_RUN_ID"]}',
+          }
+
+          print(json.dumps(payload))
+          PY
+
+          curl --fail-with-body --show-error --silent \
+            --request POST "${endpoint}" \
+            --header "Content-Type: application/json" \
+            --header "X-Releasebot-Secret: ${RELEASEBOT_SHARED_SECRET}" \
+            --data @"${payload_file}"
       - name: Send telegram message after image was built
+        if: ${{ success() && (steps.releasebot_config.outputs.enabled != 'true' || steps.releasebot.outcome == 'failure') }}
         uses: SOTBI-LLC/gh-actions/actions/notify-telegram@main
         with:
           chat_id: ${{ secrets.TELEGRAM_CHANNEL }}
@@ -121,7 +178,7 @@ jobs:
           text: |
             🏗️: ${{ github.actor }} built image.
             💬: ${{ steps.commit_message.outputs.trimmed_message }}
-            🌴: ${{ env.branch }}
+            🌴: ${{ github.head_ref || github.ref_name }}
             🔖: ${{ steps.meta.outputs.tags }}
             🏷️: ${{ steps.meta.outputs.labels }}
             👀 changes: https://github.com/${{ github.repository }}/commit/${{github.sha}}
