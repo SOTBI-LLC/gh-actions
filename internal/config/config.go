@@ -11,6 +11,7 @@ import (
 const (
 	defaultHTTPAddr        = ":8080"
 	defaultTelegramAPIBase = "https://api.telegram.org"
+	defaultGitHubAPIBase   = "https://api.github.com"
 	DefaultWorkflowFile    = "restart.yaml"
 )
 
@@ -72,7 +73,7 @@ func LoadConfig() (*Params, error) {
 		TelegramWebhookSecretToken: os.Getenv("TELEGRAM_WEBHOOK_SECRET_TOKEN"),
 		TelegramAPIBaseURL:         envOrDefault("TELEGRAM_API_BASE_URL", defaultTelegramAPIBase),
 		GitHubToken:                os.Getenv("GITHUB_TOKEN"),
-		GitHubAPIBaseURL:           envOrDefault("GITHUB_API_BASE_URL", "https://api.github.com"),
+		GitHubAPIBaseURL:           envOrDefault("GITHUB_API_BASE_URL", defaultGitHubAPIBase),
 		BuildNotificationSecret:    os.Getenv("RELEASEBOT_SHARED_SECRET"),
 		WorkflowFile:               envOrDefault("RELEASEBOT_WORKFLOW_FILE", DefaultWorkflowFile),
 		EnableLongPolling:          strings.EqualFold(os.Getenv("RELEASEBOT_LONG_POLLING"), "true"),

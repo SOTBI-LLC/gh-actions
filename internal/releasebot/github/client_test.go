@@ -85,6 +85,7 @@ func TestDispatchWorkflow(t *testing.T) {
 					gotPath = r.URL.Path
 
 					gotAuth = r.Header.Get("Authorization")
+
 					if err := json.NewDecoder(r.Body).Decode(&gotPayload); err != nil {
 						t.Fatalf("decode github dispatch: %v", err)
 					}
