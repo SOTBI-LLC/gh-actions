@@ -9,9 +9,9 @@ import (
 )
 
 type releaseEntry struct {
-	notification  domain.BuildNotification
-	devDeployed   bool
-	prodDeployed  bool
+	notification domain.BuildNotification
+	devDeployed  bool
+	prodDeployed bool
 }
 
 type Store struct {

@@ -12,14 +12,18 @@ import (
 	"github.com/SOTBI-LLC/gh-actions/internal/releasebot/domain"
 )
 
+type Doer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 type Client struct {
 	baseURL      string
 	token        string
 	workflowFile string
-	http         *http.Client
+	http         Doer
 }
 
-func NewClient(baseURL, token, workflowFile string, httpClient *http.Client) *Client {
+func NewClient(baseURL, token, workflowFile string, httpClient Doer) *Client {
 	return &Client{
 		baseURL:      strings.TrimRight(baseURL, "/"),
 		token:        token,
