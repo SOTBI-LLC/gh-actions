@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
-
 FROM golang:alpine AS builder
+
+LABEL org.opencontainers.image.source = "https://github.com/SOTBI-LLC/gh-actions"
 
 WORKDIR /src
 
