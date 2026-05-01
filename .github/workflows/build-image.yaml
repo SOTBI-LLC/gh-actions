@@ -71,30 +71,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Registry write policy
-        id: registry
-        shell: bash
-        env:
-          CAN_PUSH: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
-        run: |
-          set -euo pipefail
-          # Fork PRs get a read-only GITHUB_TOKEN; pushes and registry cache export need write.
-          if [ "${CAN_PUSH}" = "true" ]; then
-            echo "push=true" >> "${GITHUB_OUTPUT}"
-            {
-              echo "cache_to<<CACHE_TO_EOF"
-              echo "type=gha,mode=max"
-              echo "type=registry,ref=${IMAGE_REF_LOWER}:buildcache,mode=max"
-              echo "CACHE_TO_EOF"
-            } >> "${GITHUB_OUTPUT}"
-          else
-            echo "push=false" >> "${GITHUB_OUTPUT}"
-            {
-              echo "cache_to<<CACHE_TO_EOF"
-              echo "type=gha,mode=max"
-              echo "CACHE_TO_EOF"
-            } >> "${GITHUB_OUTPUT}"
-          fi
       - name: Build & push image
         id: build
         uses: docker/build-push-action@v7
@@ -105,8 +81,10 @@ jobs:
           cache-from: |
             type=registry,ref=${{ env.IMAGE_REF_LOWER }}:buildcache
             type=gha
-          cache-to: ${{ steps.registry.outputs.cache_to }}
-          push: ${{ steps.registry.outputs.push == 'true' }}
+          cache-to: |
+            type=gha,mode=max
+            type=registry,ref=${{ env.IMAGE_REF_LOWER }}:buildcache,mode=max
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
       - name: Send telegram message on fail image was built
         if: failure()
