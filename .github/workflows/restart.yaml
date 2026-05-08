@@ -43,7 +43,7 @@ jobs:
         run: |
           helm lint ./helm
           helm package ./helm
-          helm upgrade -i --reuse-values ${{ github.event.repository.name }} ./helm --set image.tag=${{ inputs.tag }} -n ${{ inputs.environment}}  -f ./helm/${{ inputs.environment}}.yaml
+          helm upgrade -i --reset-then-reuse-values ${{ github.event.repository.name }} ./helm --set image.tag=${{ inputs.tag }} -n ${{ inputs.environment}}  -f ./helm/${{ inputs.environment}}.yaml
 
   send-tg-failure:
     name: Send telegram message if failure develop restart
