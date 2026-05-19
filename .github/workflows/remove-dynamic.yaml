@@ -30,7 +30,7 @@ jobs:
           echo "Merged branch: ${{ github.event.pull_request.head.ref }}"
       - name: Branch to lowercase
         id: branch-to-lowercase
-        run: echo "branch=$(echo '${{ github.event.inputs.ns || github.event.pull_request.head.ref }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+        run: echo "branch=$(echo '${{ inputs.ns }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
       - name: Post-deployment cleanup (delete branch namespaces)
         run: |
           mkdir -p ~/.kube
@@ -45,6 +45,6 @@ jobs:
     secrets: inherit
     with:
       text: |
-        ${{ github.actor }} removed FRONT from URL: http://${{ steps.branch-to-lowercase.outputs.branch }}.svc.ourzoo.ru
-        Removed namespace: ${{ steps.branch-to-lowercase.outputs.branch }}
+        ${{ github.actor }} removed FRONT from URL: http://${{ inputs.ns }}.svc.ourzoo.ru
+        Removed namespace: ${{ inputs.ns }}
         View job logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
