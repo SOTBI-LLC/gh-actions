@@ -37,12 +37,14 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > ~/.kube/config
           chmod go-r ~/.kube/config
           kubectl delete namespace ${{ steps.branch-to-lowercase.outputs.branch }} --ignore-not-found=true
-      - name: Send telegram message after remove dynamic
-        uses: SOTBI-LLC/gh-actions/actions/notify-telegram@main
-        with:
-          chat_id: ${{ secrets.TELEGRAM_CHANNEL }}
-          bot_token: ${{ secrets.TELEGRAM_TOKEN }}
-          text: |
-            ${{ github.actor }} removed FRONT from URL: http://${{ steps.branch-to-lowercase.outputs.branch }}.svc.ourzoo.ru
-            Removed namespace: ${{ steps.branch-to-lowercase.outputs.branch }}
-            View job logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  send-tg-success:
+    name: Send telegram message
+    needs:
+     - cleanup
+    uses: SOTBI-LLC/gh-actions/.github/workflows/notify.yaml@main
+    secrets: inherit
+    with:
+      text: |
+        ${{ github.actor }} removed FRONT from URL: http://${{ steps.branch-to-lowercase.outputs.branch }}.svc.ourzoo.ru
+        Removed namespace: ${{ steps.branch-to-lowercase.outputs.branch }}
+        View job logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
