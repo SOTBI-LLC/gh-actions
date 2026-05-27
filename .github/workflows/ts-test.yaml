@@ -18,10 +18,10 @@ permissions:
 jobs:
   test:
     name: Test
-    runs-on: arc-runners
+    runs-on: ubuntu-latest
     timeout-minutes: 40
-    env:
-      NODE_USE_ENV_PROXY: "1"
+    # env:
+    #   NODE_USE_ENV_PROXY: "1"
 
     steps:
       - name: Checkout
