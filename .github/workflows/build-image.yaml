@@ -27,7 +27,7 @@ permissions:
 jobs:
   build-image:
     name: Building image
-    timeout-minutes: 20
+    timeout-minutes: 40
     runs-on: arc-runners
     env:
       NODE_USE_ENV_PROXY: "1"
