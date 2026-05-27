@@ -29,6 +29,8 @@ jobs:
     name: Building image
     timeout-minutes: 20
     runs-on: arc-runners
+    env:
+      NODE_USE_ENV_PROXY: "1"
     steps:
       - name: Set ghcr image ref (lowercase)
         run: |

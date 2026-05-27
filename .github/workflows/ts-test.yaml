@@ -20,6 +20,8 @@ jobs:
     name: Test
     runs-on: arc-runners
     timeout-minutes: 20
+    env:
+      NODE_USE_ENV_PROXY: "1"
 
     steps:
       - name: Checkout

@@ -20,6 +20,9 @@ jobs:
     name: Lint
     runs-on: arc-runners
     timeout-minutes: 20
+    # Self-hosted runners use HTTP_PROXY (Xray); Node 24 needs this for corepack/fetch.
+    env:
+      NODE_USE_ENV_PROXY: "1"
 
     steps:
       - name: Checkout
