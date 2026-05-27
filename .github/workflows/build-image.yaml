@@ -28,7 +28,7 @@ jobs:
   build-image:
     name: Building image
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: arc-runners
     steps:
       - name: Set ghcr image ref (lowercase)
         run: |
