@@ -70,9 +70,17 @@ jobs:
         run: mkdir -p "${BUILDX_CACHE_DIR}"
 
       - name: Set up Docker Buildx
+        if: contains(runner.labels, 'arc-runners')
         uses: docker/setup-buildx-action@v4
-        # Default docker driver uses DinD (DOCKER_HOST). Do not use driver: kubernetes —
-        # buildkit would run in a separate pod without /runner-cache.
+        with:
+          # Default docker-container pulls moby/buildkit from docker.io without proxy → timeout.
+          # docker driver uses BuildKit in DinD (DOCKER_HOST); enough for linux/amd64.
+          driver: docker
+          platforms: linux/amd64
+
+      - name: Set up Docker Buildx
+        if: ${{ !contains(runner.labels, 'arc-runners') }}
+        uses: docker/setup-buildx-action@v4
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:
