@@ -1,0 +1,71 @@
+name: Runner local cache
+description: Restore or save a directory on the arc-runners shared PVC (/runner-cache). No-op on GitHub-hosted runners.
+
+inputs:
+  path:
+    description: Path under /runner-cache (e.g. yarn/my-org-my-repo-abc123)
+    required: true
+  target:
+    description: Workspace path to sync (file or directory)
+    required: true
+  mode:
+    description: restore or save
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Runner local cache (${{ inputs.mode }})
+      shell: bash
+      env:
+        CACHE_PATH: ${{ inputs.path }}
+        TARGET: ${{ inputs.target }}
+        MODE: ${{ inputs.mode }}
+      run: |
+        set -euo pipefail
+
+        cache_root="/runner-cache"
+        if [ ! -d "${cache_root}" ]; then
+          echo "Local runner cache not mounted (${cache_root}); skipping."
+          exit 0
+        fi
+
+        case "${MODE}" in
+          restore|save) ;;
+          *)
+            echo "mode must be restore or save, got: ${MODE}" >&2
+            exit 1
+            ;;
+        esac
+
+        src="${cache_root}/${CACHE_PATH}"
+        dst="${TARGET}"
+
+        if [ "${MODE}" = "restore" ]; then
+          if [ ! -e "${src}" ]; then
+            echo "Cache miss: ${src}"
+            exit 0
+          fi
+          mkdir -p "$(dirname "${dst}")"
+          if [ -d "${src}" ]; then
+            mkdir -p "${dst}"
+            rsync -a "${src}/" "${dst}/"
+          else
+            cp -a "${src}" "${dst}"
+          fi
+          echo "Restored ${src} -> ${dst}"
+          exit 0
+        fi
+
+        if [ ! -e "${dst}" ]; then
+          echo "Nothing to save at ${dst}"
+          exit 0
+        fi
+        mkdir -p "$(dirname "${src}")"
+        if [ -d "${dst}" ]; then
+          mkdir -p "${src}"
+          rsync -a "${dst}/" "${src}/"
+        else
+          cp -a "${dst}" "${src}"
+        fi
+        echo "Saved ${dst} -> ${src}"

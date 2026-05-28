@@ -35,14 +35,6 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Cache node modules
-        uses: actions/cache@v5
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
       - name: Enable Corepack
         run: corepack enable
 
@@ -50,14 +42,19 @@ jobs:
         id: yarn-cache-dir-path
         run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
 
-      - name: Cache yarn dependencies
-        uses: actions/cache@v5
-        id: yarn-cache
+      - name: Restore node_modules (local runner cache)
+        uses: SOTBI-LLC/gh-actions/actions/runner-local-cache@main
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          path: node-modules/${{ hashFiles('yarn.lock') }}
+          target: node_modules
+          mode: restore
+
+      - name: Restore yarn cache (local runner cache)
+        uses: SOTBI-LLC/gh-actions/actions/runner-local-cache@main
+        with:
+          path: yarn/${{ hashFiles('**/yarn.lock') }}
+          target: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          mode: restore
 
       - name: Configure npm authentication
         run: |
@@ -69,6 +66,22 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+
+      - name: Save node_modules (local runner cache)
+        if: success()
+        uses: SOTBI-LLC/gh-actions/actions/runner-local-cache@main
+        with:
+          path: node-modules/${{ hashFiles('yarn.lock') }}
+          target: node_modules
+          mode: save
+
+      - name: Save yarn cache (local runner cache)
+        if: success()
+        uses: SOTBI-LLC/gh-actions/actions/runner-local-cache@main
+        with:
+          path: yarn/${{ hashFiles('**/yarn.lock') }}
+          target: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          mode: save
 
       - name: Run ESLint
         run: yarn lint
