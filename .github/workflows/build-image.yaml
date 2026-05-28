@@ -66,6 +66,7 @@ jobs:
             type=raw,value=${{ inputs.tag }}
             type=raw,latest
       - name: Prepare local Buildx cache directory
+        if: contains(runner.labels, 'arc-runners')
         run: mkdir -p "${BUILDX_CACHE_DIR}"
 
       - name: Set up Docker Buildx
