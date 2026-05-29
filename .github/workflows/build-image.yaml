@@ -28,7 +28,7 @@ jobs:
   build-image:
     name: Building image
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: arc-runners
     env:
       # Shared PVC on arc-runners (see local-k8s kubernetes/apps/arc-runners).
       BUILDX_CACHE_DIR: /runner-cache/buildx/${{ github.repository }}
