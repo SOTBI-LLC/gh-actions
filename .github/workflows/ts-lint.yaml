@@ -18,11 +18,8 @@ permissions:
 jobs:
   lint:
     name: Lint
-    runs-on: arc-runners
-    timeout-minutes: 40
-    # Self-hosted runners use HTTP_PROXY (Xray); Node 24 needs this for corepack/fetch.
-    env:
-      NODE_USE_ENV_PROXY: "1"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -37,10 +34,6 @@ jobs:
 
       - name: Enable Corepack
         run: corepack enable
-
-      - name: Configure Yarn/npm proxy
-        if: contains(runner.labels, 'arc-runners')
-        uses: SOTBI-LLC/gh-actions/actions/configure-yarn-proxy@main
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
