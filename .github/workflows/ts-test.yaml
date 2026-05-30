@@ -18,8 +18,8 @@ permissions:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: arc-runners
+    # timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -40,6 +40,7 @@ jobs:
         run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
 
       - name: Cache node modules
+        if: ${{ !contains(runner.labels, 'arc-runners') }}
         uses: actions/cache@v5
         with:
           path: node_modules
@@ -48,6 +49,7 @@ jobs:
             ${{ runner.os }}-node-modules-
 
       - name: Cache yarn dependencies
+        if: ${{ !contains(runner.labels, 'arc-runners') }}
         uses: actions/cache@v5
         id: yarn-cache
         with:
