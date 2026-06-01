@@ -18,8 +18,8 @@ permissions:
 jobs:
   lint:
     name: Lint
-    runs-on: arc-runners
-    # timeout-minutes: 15
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout

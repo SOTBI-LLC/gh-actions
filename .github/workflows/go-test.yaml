@@ -14,8 +14,8 @@ permissions:
 
 jobs:
   testing:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    runs-on: arc-runners
     steps:
       - name: Checkout
         uses: actions/checkout@v6
