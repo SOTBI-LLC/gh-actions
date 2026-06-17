@@ -94,6 +94,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build & push image
+        if: contains(runner.labels, 'arc-runners')
         id: build
         uses: docker/build-push-action@v7
         with:
@@ -106,6 +107,18 @@ jobs:
           cache-to: |
             type=local,dest=${{ env.BUILDX_CACHE_DIR }},mode=max
             type=registry,ref=${{ env.IMAGE_REF_LOWER }}:buildcache,mode=max
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+      - name: Build & push image
+        if: ${{ !contains(runner.labels, 'arc-runners') }}
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: build/Dockerfile
+          platforms: linux/amd64
+          cache-from: type=registry,ref=${{ env.IMAGE_REF_LOWER }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_REF_LOWER }}:buildcache,mode=max
           push: true
           tags: ${{ steps.meta.outputs.tags }}
       - name: Send telegram message on fail image was built
