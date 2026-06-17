@@ -93,32 +93,36 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure Buildx cache
+        env:
+          IS_ARC_RUNNER: ${{ contains(runner.labels, 'arc-runners') }}
+        run: |
+          if [ "${IS_ARC_RUNNER}" = "true" ]; then
+            {
+              echo 'BUILDX_CACHE_FROM<<EOF'
+              echo "type=local,src=${BUILDX_CACHE_DIR}"
+              echo "type=registry,ref=${IMAGE_REF_LOWER}:buildcache"
+              echo 'EOF'
+              echo 'BUILDX_CACHE_TO<<EOF'
+              echo "type=local,dest=${BUILDX_CACHE_DIR},mode=max"
+              echo "type=registry,ref=${IMAGE_REF_LOWER}:buildcache,mode=max"
+              echo 'EOF'
+            } >> "${GITHUB_ENV}"
+          else
+            {
+              echo "BUILDX_CACHE_FROM=type=registry,ref=${IMAGE_REF_LOWER}:buildcache"
+              echo "BUILDX_CACHE_TO=type=registry,ref=${IMAGE_REF_LOWER}:buildcache,mode=max"
+            } >> "${GITHUB_ENV}"
+          fi
       - name: Build & push image
-        if: contains(runner.labels, 'arc-runners')
         id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           file: build/Dockerfile
           platforms: linux/amd64
-          cache-from: |
-            type=local,src=${{ env.BUILDX_CACHE_DIR }}
-            type=registry,ref=${{ env.IMAGE_REF_LOWER }}:buildcache
-          cache-to: |
-            type=local,dest=${{ env.BUILDX_CACHE_DIR }},mode=max
-            type=registry,ref=${{ env.IMAGE_REF_LOWER }}:buildcache,mode=max
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-      - name: Build & push image
-        if: ${{ !contains(runner.labels, 'arc-runners') }}
-        id: build
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: build/Dockerfile
-          platforms: linux/amd64
-          cache-from: type=registry,ref=${{ env.IMAGE_REF_LOWER }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_REF_LOWER }}:buildcache,mode=max
+          cache-from: ${{ env.BUILDX_CACHE_FROM }}
+          cache-to: ${{ env.BUILDX_CACHE_TO }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
       - name: Send telegram message on fail image was built
