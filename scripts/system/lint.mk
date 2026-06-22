@@ -1,3 +1,0 @@
-lint:
-	golangci-lint run --fix --timeout 120s ./...
-
