@@ -34,7 +34,7 @@ permissions:
 jobs:
   build-image:
     name: Building image
-    timeout-minutes: 30
+    timeout-minutes: 60
     runs-on: ${{ inputs.runner || 'arc-runners' }}
     env:
       # Shared PVC on arc-runners (see local-k8s kubernetes/apps/arc-runners).
