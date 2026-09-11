@@ -197,9 +197,15 @@ jobs:
           import json
           import os
 
+          # GITHUB_REF is refs/pull/N/merge on PR builds. GitHub deletes that ref
+          # when the check run finishes, so workflow_dispatch on it later fails
+          # with 422 "No ref found". Dispatch from the head branch instead.
+          head_ref = os.environ.get("GITHUB_HEAD_REF", "")
+          ref = f"refs/heads/{head_ref}" if head_ref else os.environ["GITHUB_REF"]
+
           payload = {
               "repository": os.environ["GITHUB_REPOSITORY"],
-              "ref": os.environ["GITHUB_REF"],
+              "ref": ref,
               "branch": os.environ["BRANCH"],
               "sha": os.environ["GITHUB_SHA"],
               "tag": os.environ["TAG"],
