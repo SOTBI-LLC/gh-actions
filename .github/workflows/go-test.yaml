@@ -8,6 +8,7 @@ on:
         required: true
 env:
   POSTGRES_URL: "postgresql://energy:postgres@localhost:5432/energy_test?sslmode=disable"
+  DADATA_API_KEY: ${{ secrets.DADATA_API_KEY }}
 
 permissions:
   contents: read
