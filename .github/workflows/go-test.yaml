@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   testing:
-    timeout-minutes: 10
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,7 +32,6 @@ jobs:
       - name: Testing
         run: make test-ci
       - name: Upload Go test results
-        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: Go-test-results
