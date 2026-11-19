@@ -26,14 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Install Linux build tools
-        if: inputs.runner == 'arc-runners'
-        shell: bash
-        run: |
-          if ! command -v make >/dev/null || ! command -v gcc >/dev/null; then
-            sudo -n apt-get update
-            sudo -n apt-get install -y --no-install-recommends build-essential
-          fi
       - name: Setup GO
         uses: actions/setup-go@v6
         with:
@@ -44,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: go mod download
       - name: Testing
-        run: make test-ci
+        run: go test --tags=tests -v --race -coverpkg=./internal/...  ./... -json > test-results.json
       - name: Upload Go test results
         uses: actions/upload-artifact@v4
         with:
