@@ -39,6 +39,7 @@ jobs:
       - name: Testing
         run: go test --tags=tests -v --race -coverpkg=./internal/...  ./... -json > test-results.json
       - name: Upload Go test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Go-test-results
