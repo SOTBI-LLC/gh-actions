@@ -1,6 +1,12 @@
 name: Test
 on:
   workflow_call:
+    inputs:
+      runner:
+        description: 'Runner label'
+        required: false
+        type: string
+        default: ubuntu-latest
     secrets:
       TELEGRAM_CHANNEL:
         required: true
@@ -16,7 +22,7 @@ permissions:
 jobs:
   testing:
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
