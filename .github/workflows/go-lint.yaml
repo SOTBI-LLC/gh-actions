@@ -36,7 +36,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: latest
-          args: --timeout 5m
+          args: --timeout 10m
       - name: Send telegram message after linting failed
         if: failure()
         uses: SOTBI-LLC/gh-actions/actions/notify-telegram@main
