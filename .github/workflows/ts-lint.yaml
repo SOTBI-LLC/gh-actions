@@ -2,6 +2,12 @@ name: Lint
 
 on:
   workflow_call:
+    inputs:
+      runner:
+        description: 'Runner label'
+        required: false
+        type: string
+        default: ubuntu-latest
     secrets:
       TELEGRAM_CHANNEL:
         required: true
@@ -18,7 +24,7 @@ permissions:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 15
 
     steps:
