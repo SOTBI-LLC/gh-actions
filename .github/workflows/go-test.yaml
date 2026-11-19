@@ -34,6 +34,14 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go.sum
+      - name: Install C compiler for race tests
+        if: inputs.runner == 'arc-runners'
+        shell: bash
+        run: |
+          if ! command -v gcc >/dev/null; then
+            sudo -n apt-get update
+            sudo -n apt-get install -y --no-install-recommends build-essential
+          fi
       - name: Install dependencies
         run: go mod download
       - name: Testing
